@@ -1,0 +1,640 @@
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { 
+  CloudFog, 
+  Sun, 
+  Activity, 
+  MapPin,
+  Navigation,
+  ChevronDown,
+  Info,
+  X,
+  Plus,
+  Minus,
+  BarChart3,
+  Settings,
+  Bell,
+  Layers,
+  Wrench,
+  ClipboardList,
+  Download,
+  Clock,
+  FileCheck,
+  Thermometer,
+  Zap
+} from 'lucide-react';
+
+// COMPREHENSIVE NATIONAL DATASET
+const GEOGRAPHY_DATA = {
+  "Andhra Pradesh": { 
+    districts: ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Chittoor", "Anantapur"],
+    highways: [
+      { id: 'ap-1', name: "NH16 - Vizag Port Rd", retro: 195, status: 'Good', vis: 80, cx: 340, cy: 410, type: 'NH', sensor: 'Active', temp: '28°C' },
+      { id: 'ap-2', name: "NH65 - Vijayawada Exp", retro: 180, status: 'Good', vis: 75, cx: 320, cy: 430, type: 'NH', sensor: 'Active', temp: '30°C' }
+    ], 
+    view: { x: 280, y: 380, w: 150, h: 150, scale: 0.3 } 
+  },
+  "Assam": {
+    districts: ["Guwahati", "Dibrugarh", "Silchar", "Jorhat"],
+    highways: [
+      { id: 'as-1', name: "NH27 - East-West Corridor", retro: 165, status: 'Fair', vis: 30, cx: 550, cy: 180, type: 'NH', sensor: 'Warning', temp: '22°C' }
+    ],
+    view: { x: 500, y: 140, w: 120, h: 120, scale: 0.2 }
+  },
+  "Bihar": { 
+    districts: ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur"],
+    highways: [
+      { id: 'br-1', name: "NH19 - Golden Quad", retro: 110, status: 'Fair', vis: 40, cx: 400, cy: 190, type: 'NH', sensor: 'Maint', temp: '26°C' }
+    ], 
+    view: { x: 350, y: 150, w: 120, h: 120, scale: 0.2 } 
+  },
+  "Delhi NCR": { 
+    districts: ["New Delhi", "Gurgaon", "Noida", "Faridabad", "Ghaziabad"],
+    highways: [
+      { id: 'dl-1', name: "DND Flyway", retro: 240, status: 'Excell', vis: 95, cx: 290, cy: 180, type: 'Exp', sensor: 'Active', temp: '34°C' },
+      { id: 'dl-2', name: "Yashobhoomi Dwarka Exp", retro: 275, status: 'Excell', vis: 98, cx: 285, cy: 185, type: 'Exp', sensor: 'Active', temp: '33°C' }
+    ], 
+    // Adjusted view for Delhi NCR to prevent "making it very big"
+    view: { x: 200, y: 120, w: 200, h: 200, scale: 0.25 } 
+  },
+  "Gujarat": { 
+    districts: ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar"],
+    highways: [
+      { id: 'gj-1', name: "NE-1 Ahmd-Vadr Exp", retro: 245, status: 'Excell', vis: 98, cx: 160, cy: 260, type: 'Exp', sensor: 'Active', temp: '36°C' },
+      { id: 'gj-2', name: "NH48 - Surat Bypass", retro: 210, status: 'Good', vis: 85, cx: 155, cy: 290, type: 'NH', sensor: 'Active', temp: '32°C' }
+    ], 
+    view: { x: 120, y: 220, w: 120, h: 120, scale: 0.2 } 
+  },
+  "Karnataka": { 
+    districts: ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi", "Belagavi"],
+    highways: [
+      { id: 'ka-1', name: "NICE Road Bengaluru", retro: 205, status: 'Good', vis: 88, cx: 280, cy: 485, type: 'Exp', sensor: 'Active', temp: '24°C' },
+      { id: 'ka-2', name: "NH48 - Belagavi-Hubballi", retro: 190, status: 'Good', vis: 70, cx: 240, cy: 440, type: 'NH', sensor: 'Active', temp: '25°C' }
+    ], 
+    view: { x: 220, y: 410, w: 150, h: 150, scale: 0.3 } 
+  },
+  "Kerala": {
+    districts: ["Kochi", "Thiruvananthapuram", "Kozhikode"],
+    highways: [
+      { id: 'kl-1', name: "NH66 - Coastal Highway", retro: 175, status: 'Fair', vis: 50, cx: 270, cy: 560, type: 'NH', sensor: 'Maint', temp: '29°C' }
+    ],
+    view: { x: 240, y: 520, w: 100, h: 100, scale: 0.2 }
+  },
+  "Maharashtra": { 
+    districts: ["Mumbai", "Pune", "Nagpur", "Nashik", "Aurangabad", "Solapur"],
+    highways: [
+      { id: 'mh-1', name: "Mumbai-Pune Expway", retro: 260, status: 'Excell', vis: 95, cx: 180, cy: 365, type: 'Exp', sensor: 'Active', temp: '27°C' },
+      { id: 'mh-2', name: "Samruddhi Mahamarg", retro: 230, status: 'Good', vis: 90, cx: 220, cy: 340, type: 'Exp', sensor: 'Active', temp: '32°C' },
+      { id: 'mh-3', name: "Atal Setu (MTHL)", retro: 285, status: 'Excell', vis: 99, cx: 175, cy: 375, type: 'Exp', sensor: 'Active', temp: '28°C' }
+    ], 
+    view: { x: 150, y: 300, w: 180, h: 180, scale: 0.4 } 
+  },
+  "Odisha": {
+    districts: ["Bhubaneswar", "Cuttack", "Rourkela"],
+    highways: [
+      { id: 'or-1', name: "NH16 - Chilika Corridor", retro: 185, status: 'Good', vis: 75, cx: 420, cy: 340, type: 'NH', sensor: 'Active', temp: '31°C' }
+    ],
+    view: { x: 380, y: 300, w: 120, h: 120, scale: 0.2 }
+  },
+  "Punjab": {
+    districts: ["Ludhiana", "Amritsar", "Chandigarh"],
+    highways: [
+      { id: 'pb-1', name: "Delhi-Amritsar-Katra", retro: 235, status: 'Good', vis: 92, cx: 260, cy: 130, type: 'Exp', sensor: 'Active', temp: '24°C' }
+    ],
+    view: { x: 230, y: 100, w: 100, h: 100, scale: 0.2 }
+  },
+  "Rajasthan": { 
+    districts: ["Jaipur", "Jodhpur", "Udaipur", "Bikaner", "Kota", "Ajmer"],
+    highways: [
+      { id: 'rj-1', name: "NH48 - Jaipur Bypass", retro: 215, status: 'Good', vis: 94, cx: 210, cy: 200, type: 'Exp', sensor: 'Active', temp: '38°C' },
+      { id: 'rj-2', name: "Delhi-Mumbai Exp Link", retro: 255, status: 'Excell', vis: 97, cx: 240, cy: 220, type: 'Exp', sensor: 'Active', temp: '37°C' }
+    ], 
+    view: { x: 140, y: 150, w: 150, h: 150, scale: 0.3 } 
+  },
+  "Tamil Nadu": { 
+    districts: ["Chennai", "Coimbatore", "Madurai", "Salem", "Tiruchirappalli"],
+    highways: [
+      { id: 'tn-1', name: "Chennai ECR", retro: 225, status: 'Excell', vis: 96, cx: 320, cy: 520, type: 'SH', sensor: 'Active', temp: '31°C' },
+      { id: 'tn-2', name: "NH44 - Hosur Highway", retro: 200, status: 'Good', vis: 82, cx: 290, cy: 510, type: 'NH', sensor: 'Active', temp: '26°C' }
+    ], 
+    view: { x: 260, y: 480, w: 120, h: 120, scale: 0.2 } 
+  },
+  "Telangana": {
+    districts: ["Hyderabad", "Warangal", "Nizamabad"],
+    highways: [
+      { id: 'ts-1', name: "Hyderabad ORR", retro: 265, status: 'Excell', vis: 98, cx: 295, cy: 395, type: 'Exp', sensor: 'Active', temp: '33°C' }
+    ],
+    view: { x: 250, y: 350, w: 120, h: 120, scale: 0.2 }
+  },
+  "Uttar Pradesh": { 
+    districts: ["Lucknow", "Agra", "Noida", "Varanasi", "Kanpur", "Prayagraj"],
+    highways: [
+      { id: 'up-1', name: "Yamuna Expressway", retro: 220, status: 'Good', vis: 95, cx: 320, cy: 210, type: 'Exp', sensor: 'Active', temp: '35°C' },
+      { id: 'up-2', name: "Purvanchal Expway", retro: 240, status: 'Good', vis: 92, cx: 370, cy: 225, type: 'Exp', sensor: 'Active', temp: '33°C' }
+    ], 
+    view: { x: 280, y: 180, w: 150, h: 150, scale: 0.3 } 
+  },
+  "West Bengal": {
+    districts: ["Kolkata", "Asansol", "Siliguri", "Durgapur"],
+    highways: [
+      { id: 'wb-1', name: "NH19 - Durgapur Expway", retro: 190, status: 'Good', vis: 70, cx: 480, cy: 260, type: 'Exp', sensor: 'Active', temp: '29°C' }
+    ],
+    view: { x: 440, y: 220, w: 120, h: 120, scale: 0.2 }
+  }
+};
+
+const ALL_STATES = ["All India", ...Object.keys(GEOGRAPHY_DATA).sort()];
+
+const INITIAL_TICKETS = [
+  { id: 'T-8902', target: 'NH16 Section B', status: 'In Progress', priority: 'High', date: '2024-05-12', technician: 'R. Sharma' },
+  { id: 'T-8914', target: 'Yamuna Exp Link 4', status: 'Pending', priority: 'Medium', date: '2024-05-14', technician: 'S. Verma' },
+  { id: 'T-8876', target: 'Mumbai-Pune Tunnel A', status: 'Resolved', priority: 'Critical', date: '2024-05-10', technician: 'A. Khan' },
+  { id: 'T-9001', target: 'NH66 Coastal Path', status: 'In Progress', priority: 'High', date: '2024-05-15', technician: 'M. Nair' },
+];
+
+const ALERTS = [
+  { id: 1, type: 'Weather', message: 'Heavy Fog on NH27 Assam Sector', severity: 'Critical', time: '5m ago' },
+  { id: 2, type: 'System', message: 'Sensor DL-204 Offline on Dwarka Exp', severity: 'Medium', time: '12m ago' },
+  { id: 3, type: 'Safety', message: 'Low Visibility NH19 Bihar Sector', severity: 'High', time: '45m ago' },
+];
+
+const REPORTS_DATA = [
+  { id: 'QA-2024-01', title: "Q1 2024 National Overview", size: "12.4 KB", type: "PDF Telemetry", avgRetro: 215 },
+  { id: 'WC-2024-05', title: "Western Zone Compliance", size: "8.1 KB", type: "Telemetry Log", avgRetro: 235 },
+  { id: 'NH16-COR-11', title: "NH16 Full Corridor Analysis", size: "24.5 KB", type: "Sensor Data", avgRetro: 195 },
+  { id: 'MSI-2024-03', title: "March Safety Integrity", size: "6.2 KB", type: "Executive", avgRetro: 240 },
+  { id: 'DL-NCR-001', title: "Delhi NCR Visibility Study", size: "15.7 KB", type: "PDF Feed", avgRetro: 230 },
+  { id: 'UP-YAM-22', title: "Yamuna Exp Maintenance Log", size: "10.1 KB", type: "Maintenance", avgRetro: 210 },
+  { id: 'GJ-EX-09', title: "Gujarat NE-1 Health Check", size: "9.3 KB", type: "Health Feed", avgRetro: 245 },
+  { id: 'MH-02', title: "Maharashtra Corridor A", size: "11.2 KB", type: "Telemetry Log", avgRetro: 220 },
+  { id: 'SZ-2024-04', title: "South Zone Monsoon Ready", size: "14.2 KB", type: "Safety Audit", avgRetro: 185 },
+];
+
+export default function App() {
+  const [selectedState, setSelectedState] = useState("All India");
+  const [selectedHighway, setSelectedHighway] = useState(GEOGRAPHY_DATA["Maharashtra"].highways[0]);
+  const [zoom, setZoom] = useState(1);
+  const [isTicketOpen, setIsTicketOpen] = useState(false);
+  const [isIndexOpen, setIsIndexOpen] = useState(false);
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
+  const [isMaintenanceLogOpen, setIsMaintenanceLogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [tickets, setTickets] = useState(INITIAL_TICKETS);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const detailRef = useRef(null);
+
+  // VIEW CALCULATIONS
+  const currentView = useMemo(() => {
+    const base = selectedState === "All India" 
+      ? { x: 0, y: 0, w: 650, h: 650, scale: 1 } 
+      : (GEOGRAPHY_DATA[selectedState]?.view || { x: 0, y: 0, w: 650, h: 650, scale: 1 });
+    
+    const w = base.w / zoom;
+    const h = base.h / zoom;
+    const x = base.x + (base.w - w) / 2 + pan.x;
+    const y = base.y + (base.h - h) / 2 + pan.y;
+    
+    const dotScale = (base.scale / zoom) * (1 + zoom * 0.5); 
+    return { box: `${x} ${y} ${w} ${h}`, dotScale, baseScale: base.scale };
+  }, [selectedState, zoom, pan]);
+
+  useEffect(() => {
+    setPan({ x: 0, y: 0 });
+    setZoom(1);
+  }, [selectedState]);
+
+  const handleMouseDown = (e) => {
+    if (e.target.closest('button') || e.target.closest('.pointer-events-auto')) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const sensitivity = (currentView.baseScale || 1) / zoom;
+    const dx = (dragStart.x - e.clientX) * sensitivity;
+    const dy = (dragStart.y - e.clientY) * sensitivity;
+    setPan(p => ({ x: p.x + dx, y: p.y + dy }));
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const downloadReport = (report) => {
+    const content = `RETROVISION - COMPREHENSIVE REPORT\n---------------------------------------------\nReport Title: ${report.title}\nDocument ID: ${report.id}\nDate Generated: ${new Date().toLocaleDateString()}\nClassification: ${report.type}\n\nEXECUTIVE SUMMARY:\nThis document contains detailed telemetry analysis for the ${report.title}. All data is verified by the RetroVision Node 01 sensor network.\n\nKEY METRICS:\n- Average Reflectivity: ${report.avgRetro || '210'} mcd/lux\n- Network Compliance: PASS\n- Node Stability: 99.8%\n\nFOOTER:\nConfidential. Internal Use Only. Proprietary Telemetry Protocol.`.trim();
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${report.title.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  return (
+    <div 
+      className="h-screen w-full overflow-y-auto snap-y snap-mandatory bg-slate-100 font-sans text-slate-900 scroll-smooth custom-scrollbar"
+      onMouseUp={handleMouseUp}
+    >
+      
+      {/* MAP SECTION */}
+      <section className="h-screen w-full relative flex snap-start overflow-hidden bg-slate-100 p-4 md:p-8">
+        
+        {/* Top Control Bar */}
+        <div className="absolute top-6 md:top-16 left-6 md:left-32 right-6 md:right-16 z-[60] flex items-center justify-between pointer-events-none">
+           <div className="bg-slate-900 text-white px-4 md:px-8 py-3 md:py-4 rounded-2xl md:rounded-3xl flex items-center gap-4 md:gap-6 border border-white/10 shadow-2xl pointer-events-auto">
+             <div className="flex items-center gap-3 md:pr-6 md:border-r border-white/10">
+               <Activity className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+               <span className="font-black text-[10px] md:text-xs tracking-widest uppercase truncate max-w-[100px] md:max-w-none">RetroVision</span>
+             </div>
+             <div className="hidden md:flex gap-6 items-center">
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Live Status</span>
+                  <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Broadcasting
+                  </span>
+                </div>
+                <div className="flex flex-col border-l border-white/10 pl-6">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">System Load</span>
+                  <span className="text-xs font-black uppercase text-blue-400">14% Global</span>
+                </div>
+             </div>
+           </div>
+           
+           <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
+             <button onClick={() => setIsIndexOpen(true)} className="p-3 md:p-4 bg-white border border-slate-200 rounded-xl md:rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center text-slate-600 hover:bg-slate-50">
+                <Info size={16} />
+             </button>
+
+             <div className="relative">
+                <button onClick={() => { setIsNotificationsOpen(!isNotificationsOpen); setIsSettingsOpen(false); }} className={`p-3 md:p-4 border rounded-xl md:rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center ${isNotificationsOpen ? 'bg-blue-600 text-white border-blue-500' : 'bg-white border-slate-200 text-slate-600'}`}>
+                  <Bell size={16} />
+                  {ALERTS.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
+                </button>
+                {isNotificationsOpen && (
+                  <div className="absolute top-full mt-3 right-0 w-72 md:w-96 bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden z-[100] p-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between mb-4 px-2">
+                      <p className="text-[10px] font-black uppercase text-slate-400">Active Network Alerts</p>
+                      <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[8px] font-black rounded-full uppercase">Priority</span>
+                    </div>
+                    <div className="space-y-2">
+                      {ALERTS.map(alert => (
+                        <div key={alert.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-start gap-3">
+                          <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${alert.severity === 'Critical' ? 'bg-red-500' : alert.severity === 'High' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-800 leading-tight">{alert.message}</p>
+                            <p className="text-[8px] font-black text-slate-400 uppercase mt-1">{alert.type} • {alert.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+             </div>
+
+             <div className="relative">
+                <button onClick={() => { setIsSettingsOpen(!isSettingsOpen); setIsNotificationsOpen(false); }} className={`p-3 md:p-4 rounded-xl md:rounded-2xl shadow-lg transition-all border active:scale-95 flex items-center justify-center ${isSettingsOpen ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-900 text-white border-white/10'}`}>
+                  <Settings size={16} />
+                </button>
+                {isSettingsOpen && (
+                  <div className="absolute top-full mt-3 right-0 w-64 bg-slate-900 rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden z-[100] p-2">
+                    <button onClick={() => { setIsReportsOpen(true); setIsSettingsOpen(false); }} className="w-full text-left p-4 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white flex items-center gap-3 transition-all">
+                      <ClipboardList size={14} /> <span className="text-[10px] font-black uppercase tracking-widest">Reports</span>
+                    </button>
+                  </div>
+                )}
+             </div>
+           </div>
+        </div>
+
+        {/* Sidebar */}
+        <aside className="absolute left-6 md:left-16 top-24 md:top-16 bottom-16 w-12 hover:w-64 bg-slate-900 border-r border-white/10 shadow-2xl z-50 flex flex-col pointer-events-auto rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-300 group">
+          <div className="p-4 border-b border-white/5 flex items-center gap-4">
+            <Layers className="w-5 h-5 text-blue-400 shrink-0" />
+            <span className="font-black text-xs tracking-widest text-white opacity-0 group-hover:opacity-100 transition-opacity">DATA LAYERS</span>
+          </div>
+          <div className="flex-grow overflow-y-auto p-2 space-y-1 custom-scrollbar">
+            {ALL_STATES.map(state => (
+              <button key={state} onClick={() => setSelectedState(state)} className={`w-full flex items-center gap-4 p-2.5 rounded-xl transition-all ${selectedState === state ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                <MapPin className="w-4 h-4 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-tighter whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">{state}</span>
+              </button>
+            ))}
+          </div>
+          <div className="p-4 border-t border-white/5 bg-black/20">
+             <div className="flex items-center gap-4 opacity-40 group-hover:opacity-100 transition-opacity">
+               <Zap className="w-4 h-4 text-amber-400" />
+               <span className="text-[8px] font-black text-white uppercase tracking-tighter hidden group-hover:block">Grid v4.28.1</span>
+             </div>
+          </div>
+        </aside>
+
+        {/* Map Container */}
+        <div 
+          className="flex-grow h-full relative bg-white overflow-hidden cursor-move rounded-2xl md:rounded-[2.5rem] border-[6px] md:border-[12px] border-slate-900 shadow-2xl"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+        >
+          <svg viewBox={currentView.box} className="w-full h-full absolute inset-0 select-none pointer-events-none z-10">
+            <path d="M 230 60 L 280 40 L 330 80 L 320 120 L 380 150 L 450 160 L 550 180 L 580 230 L 520 280 L 480 300 L 420 320 L 360 400 L 320 500 L 300 550 L 280 500 L 240 400 L 200 350 L 150 320 L 100 280 L 120 230 L 180 200 L 220 120 Z" fill="#f8fafc" stroke="#cbd5e1" strokeWidth={0.5} />
+            
+            {Object.keys(GEOGRAPHY_DATA).map(state => 
+              GEOGRAPHY_DATA[state].highways.map(h => {
+                const isSelected = selectedHighway?.id === h.id;
+                if (selectedState !== "All India" && selectedState !== state) return null;
+                
+                const outerRadius = (isSelected ? 18 : 8) * currentView.dotScale;
+                const innerRadius = (isSelected ? 6 : 4) * currentView.dotScale;
+
+                return (
+                  <g key={h.id} transform={`translate(${h.cx}, ${h.cy})`} className="pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedHighway(h); }}>
+                    <circle 
+                      r={outerRadius} 
+                      fill={h.retro > 200 ? 'rgba(34, 197, 94, 0.25)' : h.retro > 150 ? 'rgba(234, 179, 8, 0.25)' : 'rgba(239, 68, 68, 0.25)'} 
+                      className={isSelected ? "animate-pulse" : ""} 
+                    />
+                    <circle 
+                      r={innerRadius} 
+                      fill={isSelected ? '#2563eb' : (h.retro > 200 ? '#22c55e' : h.retro > 150 ? '#eab308' : '#ef4444')} 
+                      stroke="#fff" 
+                      strokeWidth={1.5 * currentView.dotScale} 
+                    />
+                    
+                    <foreignObject x={innerRadius + 4} y={isSelected ? -24 : -16} width="140" height="40" className="overflow-visible">
+                      <div className={`flex flex-col gap-0.5 scale-[0.35] md:scale-[0.8] origin-left transition-all ${isSelected ? 'opacity-100' : 'opacity-70'}`}>
+                        <div className={`p-1.5 rounded-lg border shadow-xl flex flex-col gap-0.5 ${isSelected ? 'bg-slate-900 text-white border-white/20' : 'bg-white/95 text-slate-800 border-slate-200'}`}>
+                          <span className="text-[10px] font-black uppercase leading-none whitespace-nowrap">{h.name}</span>
+                          {isSelected && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[8px] font-bold text-blue-400 uppercase tracking-widest leading-none">{h.type}</span>
+                              <span className="text-[8px] font-bold text-slate-400 opacity-50">•</span>
+                              <span className="text-[8px] font-bold text-emerald-400 leading-none">{h.temp}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </foreignObject>
+                  </g>
+                );
+              })
+            )}
+          </svg>
+          
+          <div className="absolute bottom-6 md:bottom-10 left-24 md:left-36 flex items-center gap-3 z-50 pointer-events-auto">
+            <div className="bg-slate-900 border border-white/10 shadow-xl rounded-xl md:rounded-2xl p-1 flex items-center gap-1">
+              <button onClick={() => setZoom(z => Math.min(z + 1, 10))} className="p-2 md:p-3 hover:bg-white/10 text-white rounded-lg transition-all"><Plus size={14}/></button>
+              <button onClick={() => setZoom(z => Math.max(z - 1, 1))} className="p-2 md:p-3 hover:bg-white/10 text-white rounded-lg transition-all"><Minus size={14}/></button>
+            </div>
+          </div>
+
+          <button onClick={() => detailRef.current?.scrollIntoView({ behavior: 'smooth' })} className="absolute bottom-6 md:bottom-12 right-6 md:right-12 z-50 flex items-center gap-4 bg-blue-600 text-white px-6 md:px-8 py-4 md:py-5 rounded-full shadow-2xl hover:bg-blue-700 transition-all border border-white/10 pointer-events-auto active:scale-95">
+            <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em]">Open Data Feed</span>
+            <ChevronDown size={18} />
+          </button>
+        </div>
+      </section>
+
+      {/* COMPACT DATA FEED SECTION */}
+      <section ref={detailRef} className="min-h-screen w-full snap-start bg-slate-900 flex flex-col p-6 md:p-12 overflow-y-auto">
+         <div className="max-w-6xl mx-auto w-full space-y-8 pb-12">
+            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 border-b border-white/5 pb-8">
+               <div>
+                  <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-white uppercase leading-none">{selectedState} Feed</h2>
+                  <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-3 flex items-center gap-2">
+                    <Activity size={12} className="text-blue-500" />
+                    Tele-Tracking / {selectedHighway?.name}
+                  </p>
+               </div>
+               <div className="flex gap-4">
+                 <div className="bg-slate-800/50 px-6 py-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                    <Thermometer size={18} className="text-amber-400" />
+                    <div className="flex flex-col">
+                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Ambient Air</span>
+                       <span className="text-sm font-black text-white uppercase">{selectedHighway?.temp || '24°C'}</span>
+                    </div>
+                 </div>
+                 <div className="bg-slate-800/50 px-6 py-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                    <BarChart3 size={18} className="text-blue-400" />
+                    <div className="flex flex-col">
+                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Sync Uptime</span>
+                       <span className="text-sm font-black text-white uppercase">99.9%</span>
+                    </div>
+                 </div>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
+               <div className="md:col-span-8 bg-white rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-12 shadow-2xl border-[6px] md:border-[10px] border-blue-600/10">
+                  <div className="flex flex-col md:flex-row justify-between gap-6 mb-10">
+                    <div className="max-w-md">
+                      <h3 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 leading-tight mb-2 truncate">{selectedHighway?.name}</h3>
+                      <div className="flex items-center gap-3">
+                        <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black uppercase rounded-lg border border-slate-200">ID: {selectedHighway?.id}</span>
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${selectedHighway?.retro > 200 ? 'bg-emerald-50 text-emerald-600 border-emerald-500/20' : 'bg-amber-50 text-amber-600 border-amber-500/20'}`}>
+                          Health: {selectedHighway?.status}
+                        </span>
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${selectedHighway?.sensor === 'Active' ? 'bg-blue-50 text-blue-600 border-blue-500/20' : 'bg-red-50 text-red-600 border-red-500/20'}`}>
+                          Node: {selectedHighway?.sensor}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {[{ l: "Reflectivity", v: selectedHighway?.retro, u: "mcd", i: Sun, c: "text-amber-500" }, { l: "Line Visibility", v: selectedHighway?.vis, u: "m", i: CloudFog, c: "text-blue-500" }, { l: "Node Temp", v: selectedHighway?.temp, u: "", i: Thermometer, c: "text-red-500" }].map((st, i) => (
+                      <div key={i} className="p-6 md:p-8 bg-slate-50 rounded-[2rem] border border-slate-100 transition-transform">
+                        <st.i size={20} className={`${st.c} mb-4`} />
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">{st.l}</p>
+                        <p className="text-2xl font-black text-slate-900">{st.v}<span className="text-[10px] text-slate-400 ml-1 font-bold">{st.u}</span></p>
+                      </div>
+                    ))}
+                  </div>
+               </div>
+
+               <div className="md:col-span-4 grid grid-cols-1 gap-6">
+                  <div className="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-xl flex flex-col justify-center items-center text-center">
+                    <div className="relative w-32 h-32 mb-4">
+                      <svg className="w-full h-full -rotate-90">
+                        <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.1)" strokeWidth="12" fill="none" />
+                        <circle cx="50%" cy="50%" r="42%" stroke="white" strokeWidth="12" fill="none" strokeDasharray="251" strokeDashoffset={251 - (251 * (selectedHighway?.retro / 300))} strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-3xl font-black">{Math.round((selectedHighway?.retro / 300) * 100)}%</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Safety Index Score</p>
+                  </div>
+                  
+                  <button onClick={() => setIsTicketOpen(true)} className="bg-slate-800 rounded-[2.5rem] p-8 text-white border-4 border-slate-700 hover:border-blue-500 transition-all group flex items-center justify-between">
+                    <div className="text-left">
+                      <h4 className="text-xl font-black uppercase tracking-tighter">Maintenance</h4>
+                      <p className="text-slate-400 text-[10px] font-bold mt-1">Deploy Technician</p>
+                    </div>
+                    <Wrench className="text-slate-500 group-hover:text-blue-400" />
+                  </button>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <button onClick={() => setIsIndexOpen(true)} className="p-8 bg-slate-800/50 rounded-[2rem] border border-white/5 text-white hover:bg-slate-800 transition-all flex items-center gap-6">
+                <Navigation className="text-blue-400" />
+                <div className="text-left">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Inventory</p>
+                  <p className="text-lg font-black uppercase">Districts</p>
+                </div>
+              </button>
+              <button onClick={() => setIsReportsOpen(true)} className="p-8 bg-slate-800/50 rounded-[2rem] border border-white/5 text-white hover:bg-slate-800 transition-all flex items-center gap-6">
+                <ClipboardList className="text-emerald-400" />
+                <div className="text-left">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Compliance</p>
+                  <p className="text-lg font-black uppercase">Reports</p>
+                </div>
+              </button>
+              <button onClick={() => setIsMaintenanceLogOpen(true)} className="p-8 bg-slate-800/50 rounded-[2rem] border border-white/5 text-white hover:bg-slate-800 transition-all flex items-center gap-6">
+                <Clock className="text-amber-400" />
+                <div className="text-left">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">History</p>
+                  <p className="text-lg font-black uppercase">Logs</p>
+                </div>
+              </button>
+            </div>
+         </div>
+      </section>
+
+      {/* NATIONAL REPORTS MODAL */}
+      {isReportsOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md">
+           <div className="bg-white w-full max-w-5xl max-h-[85vh] rounded-[3rem] md:rounded-[4rem] overflow-hidden flex flex-col shadow-2xl border-[10px] md:border-[16px] border-slate-900 animate-in zoom-in-95 duration-200">
+              <div className="p-8 md:p-12 bg-blue-600 text-white flex justify-between items-center shrink-0">
+                 <div>
+                    <h2 className="text-2xl md:text-4xl font-black uppercase tracking-widest leading-tight">National Archive</h2>
+                    <p className="text-blue-100 font-bold text-[10px] md:text-sm mt-1 tracking-widest">Global Telemetry Data Repository</p>
+                 </div>
+                 <button onClick={() => setIsReportsOpen(false)} className="p-3 md:p-5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><X size={24} /></button>
+              </div>
+              
+              <div className="p-6 md:p-12 overflow-y-auto flex-grow custom-scrollbar bg-slate-50">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                    {REPORTS_DATA.map((r, i) => (
+                      <div key={i} className="p-6 md:p-8 bg-white border border-slate-200 rounded-[2.5rem] group hover:border-blue-600 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between h-full min-h-[220px]">
+                         <div>
+                           <div className={`w-10 h-10 bg-slate-100 text-slate-900 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all`}>
+                              <FileCheck size={20} />
+                           </div>
+                           <h4 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-tight mb-1 truncate">{r.title}</h4>
+                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">{r.type} • {r.size}</p>
+                         </div>
+                         <button onClick={() => downloadReport(r)} className="flex items-center gap-3 text-[10px] font-black uppercase text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 px-5 py-3 rounded-xl hover:bg-blue-100 w-full justify-center mt-auto">
+                           <Download size={14} /> Download
+                         </button>
+                      </div>
+                    ))}
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Maintenance Log Modal */}
+      {isMaintenanceLogOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md">
+           <div className="bg-white w-full max-w-4xl max-h-[85vh] rounded-[3rem] overflow-hidden flex flex-col shadow-2xl border-[12px] border-slate-900">
+              <div className="p-8 bg-amber-500 text-white flex justify-between items-center shrink-0">
+                 <h2 className="text-2xl font-black uppercase tracking-widest">Active Dispatch Log</h2>
+                 <button onClick={() => setIsMaintenanceLogOpen(false)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-all"><X size={20}/></button>
+              </div>
+              <div className="p-8 overflow-y-auto flex-grow space-y-4 custom-scrollbar bg-slate-50">
+                 {tickets.map(t => (
+                   <div key={t.id} className="p-6 bg-white border border-slate-200 rounded-3xl flex flex-col md:flex-row justify-between md:items-center shadow-sm gap-4">
+                      <div>
+                        <h4 className="font-black text-slate-900 uppercase tracking-tight text-lg">{t.target}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t.id} • {t.date}</p>
+                          <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                          <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest">Tech: {t.technician}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase border ${t.priority === 'Critical' ? 'bg-red-50 text-red-600 border-red-500/10' : 'bg-slate-50 text-slate-600'}`}>{t.priority}</span>
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase border ${t.status === 'Resolved' ? 'bg-emerald-100 text-emerald-600 border-emerald-500/10' : 'bg-amber-100 text-amber-600 border-amber-500/10'}`}>{t.status}</span>
+                      </div>
+                   </div>
+                 ))}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Info Geographical Modal */}
+      {isIndexOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md">
+           <div className="bg-white w-full max-w-4xl max-h-[80vh] rounded-[3rem] overflow-hidden flex flex-col border-[12px] border-slate-900">
+              <div className="p-8 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                 <div className="flex items-center gap-4">
+                    <Info className="text-blue-400" />
+                    <h2 className="text-2xl font-black uppercase tracking-widest">{selectedState} Administrative Index</h2>
+                 </div>
+                 <button onClick={() => setIsIndexOpen(false)} className="p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all"><X size={20}/></button>
+              </div>
+              <div className="p-8 overflow-y-auto flex-grow bg-slate-50 custom-scrollbar">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Registered Administrative Units</p>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {(GEOGRAPHY_DATA[selectedState]?.districts || []).map(d => (
+                      <div key={d} className="p-6 bg-white rounded-2xl font-black text-slate-800 uppercase text-[10px] tracking-widest border border-slate-100 shadow-sm hover:border-blue-500 transition-colors cursor-default">{d}</div>
+                    ))}
+                    {selectedState === "All India" && (
+                      <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400">
+                        <Activity size={40} className="mb-4 opacity-20" />
+                        <p className="font-bold uppercase text-xs tracking-[0.2em]">Select a specific state for district breakdown</p>
+                      </div>
+                    )}
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Ticket Creation Modal */}
+      {isTicketOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md">
+           <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 relative shadow-2xl border-[12px] border-slate-900 animate-in slide-in-from-bottom-4 duration-300">
+              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center mb-6">
+                <Wrench size={32} />
+              </div>
+              <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 text-slate-900">Authorize Mission</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Dispatch Field Node to {selectedHighway.name}</p>
+              <div className="space-y-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Assigned Tech</p>
+                  <p className="text-sm font-black text-slate-800">UNASSIGNED - AUTO SELECTION</p>
+                </div>
+                <textarea 
+                  className="w-full p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 font-bold h-32 text-sm focus:border-blue-600 outline-none transition-all" 
+                  placeholder="Additional mission parameters..." 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-8">
+                <button onClick={() => setIsTicketOpen(false)} className="py-5 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Abort</button>
+                <button onClick={() => setIsTicketOpen(false)} className="py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-700 active:scale-95 transition-all">Authorize</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .bg-slate-900.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoom-in-95 { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      `}} />
+    </div>
+  );
+}
